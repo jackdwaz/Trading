@@ -3,28 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Trading Terminal</title>
+<title>Trading Dashboard FIXED</title>
 
 <script src="https://s3.tradingview.com/tv.js"></script>
 
 <style>
-body { margin:0; font-family:sans-serif; background:#0d1117; color:#fff; }
+body { background:#0d1117; color:#fff; font-family:sans-serif; margin:0; }
 .container { max-width:420px; margin:auto; padding:10px; }
 .card { background:#161b22; padding:12px; border-radius:10px; margin-bottom:10px; }
-select,input,button {
+select, button {
     width:100%; padding:10px; margin:5px 0;
-    border:none; border-radius:8px; background:#0d1117; color:#fff;
+    border:none; border-radius:8px;
+    background:#0d1117; color:#fff;
 }
 button { background:#238636; }
+#chart { height:300px; }
 .buy{color:#00ff9f;} .sell{color:#ff4d4d;}
-#chart{height:300px;}
 </style>
 </head>
 
 <body>
 
 <div class="container">
-<h2>📊 AI Trading Terminal</h2>
+<h2>📊 Trading Dashboard</h2>
 
 <div id="chart"></div>
 
@@ -37,166 +38,117 @@ button { background:#238636; }
 </div>
 
 <div class="card">
-<h3>📊 Excel Logic Input</h3>
+<h3>Input</h3>
 
 <select id="day">
-<option value="up">Day Cross Up</option>
-<option value="down">Day Cross Down</option>
+<option value="up">Day Up</option>
+<option value="down">Day Down</option>
 </select>
 
 <select id="h4">
-<option value="up">4H Cross Up</option>
-<option value="down">4H Cross Down</option>
+<option value="up">4H Up</option>
+<option value="down">4H Down</option>
 <option value="divup">4H Divergence Up</option>
 <option value="divdown">4H Divergence Down</option>
 </select>
 
 <select id="h1">
-<option value="up">1H Cross Up</option>
-<option value="down">1H Cross Down</option>
+<option value="up">1H Up</option>
+<option value="down">1H Down</option>
 <option value="divup">1H Divergence Up</option>
 <option value="divdown">1H Divergence Down</option>
 </select>
 
-</div>
-
 <button onclick="analyze()">Analyze</button>
+</div>
 
 <div class="card" id="result">Waiting...</div>
 
 <div class="card">
-<h3>📡 Live Price</h3>
+<h3>Live Price</h3>
 <div id="price">Loading...</div>
-<div id="orderbook"></div>
-</div>
-
-<div class="card">
-<h3>📊 Stats</h3>
-<div id="stats"></div>
-</div>
-
-<div class="card">
-<h3>💾 History</h3>
-<ul id="history"></ul>
 </div>
 
 <button onclick="resetAll()">Reset</button>
 
 </div>
 
-<audio id="sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
-
 <script>
 
-let trades = JSON.parse(localStorage.getItem("trades")) || [];
-
-// ================= CHART =================
+// ===== CHART =====
 function loadChart(){
-new TradingView.widget({
-container_id:"chart",
-symbol:"BINANCE:"+symbol.value,
-interval:"60",
-theme:"dark",
-width:"100%",
-height:300
-});
+    document.getElementById("chart").innerHTML = "";
+    new TradingView.widget({
+        container_id: "chart",
+        symbol: "BINANCE:" + document.getElementById("symbol").value,
+        interval: "60",
+        theme: "dark",
+        width: "100%",
+        height: 300
+    });
 }
 
-// ================= LOGIC ENGINE =================
+// ===== ANALYZE =====
 function analyze(){
 
-let d=day.value;
-let h4v=h4.value;
-let h1v=h1.value;
+let d = document.getElementById("day").value;
+let h4 = document.getElementById("h4").value;
+let h1 = document.getElementById("h1").value;
 
-let result="NO TRADE";
-let score=0;
+let result = "❌ NO TRADE";
+let color = "";
 
-// BUY LOGIC
-if(d==="up" && h4v==="up" && h1v==="up"){
-    result="🟢 STRONG BUY"; score=95;
+// BUY
+if(d==="up" && h4==="up" && h1==="up"){
+    result="🟢 STRONG BUY"; color="buy";
 }
-else if(d==="up" && h4v==="down" && h1v==="divup"){
-    result="🟢 PULLBACK BUY"; score=80;
+else if(d==="up" && h4==="down" && h1==="divup"){
+    result="🟢 PULLBACK BUY"; color="buy";
 }
-else if(d==="down" && h4v==="divup" && h1v==="up"){
-    result="🟢 REVERSAL BUY"; score=70;
-}
-
-// SELL LOGIC
-else if(d==="down" && h4v==="down" && h1v==="down"){
-    result="🔴 STRONG SELL"; score=95;
-}
-else if(d==="down" && h4v==="up" && h1v==="divdown"){
-    result="🔴 PULLBACK SELL"; score=80;
-}
-else if(d==="up" && h4v==="divdown" && h1v==="down"){
-    result="🔴 REVERSAL SELL"; score=70;
+else if(d==="down" && h4==="divup" && h1==="up"){
+    result="🟢 REVERSAL BUY"; color="buy";
 }
 
-// OUTPUT
-resultDiv.innerHTML = result + "<br>AI Score: "+score+"%";
+// SELL
+else if(d==="down" && h4==="down" && h1==="down"){
+    result="🔴 STRONG SELL"; color="sell";
+}
+else if(d==="down" && h4==="up" && h1==="divdown"){
+    result="🔴 PULLBACK SELL"; color="sell";
+}
+else if(d==="up" && h4==="divdown" && h1==="down"){
+    result="🔴 REVERSAL SELL"; color="sell";
+}
 
-// ALERT
-if(result!=="NO TRADE"){
-    sound.play();
+let resDiv = document.getElementById("result");
+resDiv.innerHTML = `<span class="${color}">${result}</span>`;
+
+// alert
+if(result !== "❌ NO TRADE"){
     alert(result);
 }
 
-// SAVE
-trades.push({result,score});
-localStorage.setItem("trades",JSON.stringify(trades));
-
-renderHistory();
 }
 
-// ================= BINANCE API =================
-async function fetchPrice(){
-let sym = symbol.value;
-
-let priceRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${sym}`);
-let priceData = await priceRes.json();
-
-price.innerText = "Price: " + priceData.price;
-
-// Order book
-let obRes = await fetch(`https://api.binance.com/api/v3/depth?symbol=${sym}&limit=5`);
-let obData = await obRes.json();
-
-orderbook.innerHTML =
-"Top Bid: "+obData.bids[0][0]+"<br>Top Ask: "+obData.asks[0][0];
+// ===== PRICE =====
+async function getPrice(){
+    try{
+        let res = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
+        let data = await res.json();
+        document.getElementById("price").innerText = "BTC Price: " + data.price;
+    }catch(e){
+        document.getElementById("price").innerText = "API blocked (open via Chrome)";
+    }
 }
 
-setInterval(fetchPrice,3000);
+setInterval(getPrice,3000);
 
-// ================= HISTORY =================
-function renderHistory(){
-history.innerHTML="";
-
-let wins=0;
-
-trades.forEach(t=>{
-let li=document.createElement("li");
-li.innerText = t.result + " ("+t.score+"%)";
-history.appendChild(li);
-
-if(t.score>80) wins++;
-});
-
-stats.innerText = "Trades: "+trades.length+" | High Score: "+wins;
-}
-
-// ================= RESET =================
+// ===== RESET =====
 function resetAll(){
-localStorage.clear();
-trades=[];
-renderHistory();
-result.innerText="Reset Done";
+    document.getElementById("result").innerText="Reset Done";
 }
 
-// INIT
 loadChart();
-renderHistory();
 
 </script>
 
