@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trading Dashboard FIXED</title>
+<title>Dynamic Trading Dashboard</title>
 
 <script src="https://s3.tradingview.com/tv.js"></script>
 
@@ -11,50 +11,48 @@
 body { background:#0d1117; color:#fff; font-family:sans-serif; margin:0; }
 .container { max-width:420px; margin:auto; padding:10px; }
 .card { background:#161b22; padding:12px; border-radius:10px; margin-bottom:10px; }
-select, button {
+input,select,button {
     width:100%; padding:10px; margin:5px 0;
     border:none; border-radius:8px;
     background:#0d1117; color:#fff;
 }
 button { background:#238636; }
-#chart { height:300px; }
 .buy{color:#00ff9f;} .sell{color:#ff4d4d;}
+#chart { height:300px; }
 </style>
 </head>
 
 <body>
 
 <div class="container">
-<h2>📊 Trading Dashboard</h2>
+
+<h2>📊 Smart Trading Dashboard</h2>
+
+<div class="card">
+<input id="symbolInput" placeholder="Enter Symbol (BTCUSDT, SHIBUSDT, GOLD, AAPL)">
+<button onclick="loadChart()">Load Chart</button>
+</div>
 
 <div id="chart"></div>
 
 <div class="card">
-<select id="symbol">
-<option value="BTCUSDT">BTCUSDT</option>
-<option value="ETHUSDT">ETHUSDT</option>
-</select>
-<button onclick="loadChart()">Load Chart</button>
-</div>
-
-<div class="card">
-<h3>Input</h3>
+<h3>📊 Logic Input</h3>
 
 <select id="day">
-<option value="up">Day Up</option>
-<option value="down">Day Down</option>
+<option value="up">Day Cross Up</option>
+<option value="down">Day Cross Down</option>
 </select>
 
 <select id="h4">
-<option value="up">4H Up</option>
-<option value="down">4H Down</option>
+<option value="up">4H Cross Up</option>
+<option value="down">4H Cross Down</option>
 <option value="divup">4H Divergence Up</option>
 <option value="divdown">4H Divergence Down</option>
 </select>
 
 <select id="h1">
-<option value="up">1H Up</option>
-<option value="down">1H Down</option>
+<option value="up">1H Cross Up</option>
+<option value="down">1H Cross Down</option>
 <option value="divup">1H Divergence Up</option>
 <option value="divdown">1H Divergence Down</option>
 </select>
@@ -65,22 +63,33 @@ button { background:#238636; }
 <div class="card" id="result">Waiting...</div>
 
 <div class="card">
-<h3>Live Price</h3>
-<div id="price">Loading...</div>
+<h3>📡 Live Price</h3>
+<div id="price">-</div>
 </div>
-
-<button onclick="resetAll()">Reset</button>
 
 </div>
 
 <script>
 
-// ===== CHART =====
+let currentSymbol = "BTCUSDT";
+
+// ===== LOAD CHART =====
 function loadChart(){
+    let input = document.getElementById("symbolInput").value.toUpperCase();
+    if(input) currentSymbol = input;
+
     document.getElementById("chart").innerHTML = "";
+
+    let tvSymbol = currentSymbol;
+
+    // Try to map crypto
+    if(currentSymbol.endsWith("USDT")){
+        tvSymbol = "BINANCE:" + currentSymbol;
+    }
+
     new TradingView.widget({
         container_id: "chart",
-        symbol: "BINANCE:" + document.getElementById("symbol").value,
+        symbol: tvSymbol,
         interval: "60",
         theme: "dark",
         width: "100%",
@@ -88,65 +97,58 @@ function loadChart(){
     });
 }
 
-// ===== ANALYZE =====
+// ===== LOGIC =====
 function analyze(){
 
-let d = document.getElementById("day").value;
-let h4 = document.getElementById("h4").value;
-let h1 = document.getElementById("h1").value;
+let d = day.value;
+let h4v = h4.value;
+let h1v = h1.value;
 
 let result = "❌ NO TRADE";
 let color = "";
 
 // BUY
-if(d==="up" && h4==="up" && h1==="up"){
+if(d==="up" && h4v==="up" && h1v==="up"){
     result="🟢 STRONG BUY"; color="buy";
 }
-else if(d==="up" && h4==="down" && h1==="divup"){
+else if(d==="up" && h4v==="down" && h1v==="divup"){
     result="🟢 PULLBACK BUY"; color="buy";
 }
-else if(d==="down" && h4==="divup" && h1==="up"){
+else if(d==="down" && h4v==="divup" && h1v==="up"){
     result="🟢 REVERSAL BUY"; color="buy";
 }
 
 // SELL
-else if(d==="down" && h4==="down" && h1==="down"){
+else if(d==="down" && h4v==="down" && h1v==="down"){
     result="🔴 STRONG SELL"; color="sell";
 }
-else if(d==="down" && h4==="up" && h1==="divdown"){
+else if(d==="down" && h4v==="up" && h1v==="divdown"){
     result="🔴 PULLBACK SELL"; color="sell";
 }
-else if(d==="up" && h4==="divdown" && h1==="down"){
+else if(d==="up" && h4v==="divdown" && h1v==="down"){
     result="🔴 REVERSAL SELL"; color="sell";
 }
 
-let resDiv = document.getElementById("result");
-resDiv.innerHTML = `<span class="${color}">${result}</span>`;
-
-// alert
-if(result !== "❌ NO TRADE"){
-    alert(result);
+document.getElementById("result").innerHTML =
+`<span class="${color}">${result}</span>`;
 }
 
-}
-
-// ===== PRICE =====
-async function getPrice(){
+// ===== PRICE FETCH (CRYPTO ONLY) =====
+async function fetchPrice(){
     try{
-        let res = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
-        let data = await res.json();
-        document.getElementById("price").innerText = "BTC Price: " + data.price;
-    }catch(e){
-        document.getElementById("price").innerText = "API blocked (open via Chrome)";
+        if(currentSymbol.endsWith("USDT")){
+            let res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${currentSymbol}`);
+            let data = await res.json();
+            price.innerText = "Price: " + data.price;
+        }else{
+            price.innerText = "Live price not supported for this asset";
+        }
+    }catch{
+        price.innerText = "API Error";
     }
 }
 
-setInterval(getPrice,3000);
-
-// ===== RESET =====
-function resetAll(){
-    document.getElementById("result").innerText="Reset Done";
-}
+setInterval(fetchPrice,3000);
 
 loadChart();
 
