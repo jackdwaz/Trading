@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Dashboard</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+}
+
+.container {
+    max-width: 420px;
+    margin: auto;
+    padding: 15px;
+}
+
+.card {
+    background: #161b22;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.4);
+}
+
+h2 {
+    text-align: center;
+}
+
+select, input {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #0d1117;
+    color: white;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: #238636;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+}
+
+.result {
+    text-align: center;
+    font-size: 18px;
+    margin-top: 10px;
+}
+
+.buy { color: #00ff9f; }
+.sell { color: #ff4d4d; }
+.neutral { color: #aaa; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>📊 Trading Dashboard</h2>
+
+<div class="card">
+<h3>Trend</h3>
+
+<select id="day">
+<option value="up">Day ↑</option>
+<option value="down">Day ↓</option>
+</select>
+
+<select id="h4">
+<option value="up">4H ↑</option>
+<option value="down">4H ↓</option>
+</select>
+
+<select id="h1">
+<option value="up">1H ↑</option>
+<option value="down">1H ↓</option>
+</select>
+</div>
+
+<div class="card">
+<h3>Market Signals</h3>
+
+<select id="div">
+<option value="none">No Divergence</option>
+<option value="bull">Bullish Divergence</option>
+<option value="bear">Bearish Divergence</option>
+</select>
+
+<select id="liquidity">
+<option value="no">No Liquidity Sweep</option>
+<option value="yes">Liquidity Sweep Done</option>
+</select>
+
+<select id="candle">
+<option value="no">No Confirmation</option>
+<option value="bull">Bullish Candle</option>
+<option value="bear">Bearish Candle</option>
+</select>
+
+</div>
+
+<div class="card">
+<h3>Risk Calculator</h3>
+
+<input type="number" id="entry" placeholder="Entry Price">
+<input type="number" id="sl" placeholder="Stop Loss">
+<input type="number" id="tp" placeholder="Take Profit">
+</div>
+
+<button onclick="analyze()">Analyze Trade</button>
+
+<div class="card result" id="output">Waiting...</div>
+
+</div>
+
+<script>
+function analyze() {
+
+let day = document.getElementById("day").value;
+let h4 = document.getElementById("h4").value;
+let h1 = document.getElementById("h1").value;
+let div = document.getElementById("div").value;
+let liq = document.getElementById("liquidity").value;
+let candle = document.getElementById("candle").value;
+
+let entry = parseFloat(document.getElementById("entry").value);
+let sl = parseFloat(document.getElementById("sl").value);
+let tp = parseFloat(document.getElementById("tp").value);
+
+let result = "NO TRADE";
+let className = "neutral";
+
+// BUY LOGIC
+if(day==="up" && h4==="up" && h1==="up" && candle==="bull"){
+    result = "🟢 STRONG BUY";
+    className = "buy";
+}
+else if(day==="up" && h4==="down" && div==="bull" && candle==="bull"){
+    result = "🟢 PULLBACK BUY";
+    className = "buy";
+}
+else if(day==="down" && div==="bull" && h1==="up" && liq==="yes"){
+    result = "🟢 REVERSAL BUY";
+    className = "buy";
+}
+
+// SELL LOGIC
+else if(day==="down" && h4==="down" && h1==="down" && candle==="bear"){
+    result = "🔴 STRONG SELL";
+    className = "sell";
+}
+else if(day==="down" && h4==="up" && div==="bear" && candle==="bear"){
+    result = "🔴 PULLBACK SELL";
+    className = "sell";
+}
+else if(day==="up" && div==="bear" && h1==="down" && liq==="yes"){
+    result = "🔴 REVERSAL SELL";
+    className = "sell";
+}
+
+// RR CALC
+let rrText = "";
+if(entry && sl && tp){
+    let risk = Math.abs(entry - sl);
+    let reward = Math.abs(tp - entry);
+    let rr = (reward / risk).toFixed(2);
+    rrText = "<br>RR Ratio: " + rr;
+}
+
+document.getElementById("output").innerHTML =
+    "<span class='" + className + "'>" + result + "</span>" + rrText;
+}
+</script>
+
+</body>
+</html>
