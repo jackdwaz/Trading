@@ -3,185 +3,201 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trading Dashboard</title>
+<title>AI Trading Terminal</title>
+
+<script src="https://s3.tradingview.com/tv.js"></script>
 
 <style>
-body {
-    margin: 0;
-    font-family: 'Segoe UI', sans-serif;
-    background: #0d1117;
-    color: #e6edf3;
+body { margin:0; font-family:sans-serif; background:#0d1117; color:#fff; }
+.container { max-width:420px; margin:auto; padding:10px; }
+.card { background:#161b22; padding:12px; border-radius:10px; margin-bottom:10px; }
+select,input,button {
+    width:100%; padding:10px; margin:5px 0;
+    border:none; border-radius:8px; background:#0d1117; color:#fff;
 }
-
-.container {
-    max-width: 420px;
-    margin: auto;
-    padding: 15px;
-}
-
-.card {
-    background: #161b22;
-    padding: 15px;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.4);
-}
-
-h2 {
-    text-align: center;
-}
-
-select, input {
-    width: 100%;
-    padding: 10px;
-    margin-top: 8px;
-    margin-bottom: 12px;
-    border-radius: 8px;
-    border: none;
-    background: #0d1117;
-    color: white;
-}
-
-button {
-    width: 100%;
-    padding: 12px;
-    background: #238636;
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-size: 16px;
-}
-
-.result {
-    text-align: center;
-    font-size: 18px;
-    margin-top: 10px;
-}
-
-.buy { color: #00ff9f; }
-.sell { color: #ff4d4d; }
-.neutral { color: #aaa; }
+button { background:#238636; }
+.buy{color:#00ff9f;} .sell{color:#ff4d4d;}
+#chart{height:300px;}
 </style>
 </head>
 
 <body>
 
 <div class="container">
+<h2>📊 AI Trading Terminal</h2>
 
-<h2>📊 Trading Dashboard</h2>
+<div id="chart"></div>
 
 <div class="card">
-<h3>Trend</h3>
+<select id="symbol">
+<option value="BTCUSDT">BTCUSDT</option>
+<option value="ETHUSDT">ETHUSDT</option>
+</select>
+<button onclick="loadChart()">Load Chart</button>
+</div>
+
+<div class="card">
+<h3>📊 Excel Logic Input</h3>
 
 <select id="day">
-<option value="up">Day ↑</option>
-<option value="down">Day ↓</option>
+<option value="up">Day Cross Up</option>
+<option value="down">Day Cross Down</option>
 </select>
 
 <select id="h4">
-<option value="up">4H ↑</option>
-<option value="down">4H ↓</option>
+<option value="up">4H Cross Up</option>
+<option value="down">4H Cross Down</option>
+<option value="divup">4H Divergence Up</option>
+<option value="divdown">4H Divergence Down</option>
 </select>
 
 <select id="h1">
-<option value="up">1H ↑</option>
-<option value="down">1H ↓</option>
+<option value="up">1H Cross Up</option>
+<option value="down">1H Cross Down</option>
+<option value="divup">1H Divergence Up</option>
+<option value="divdown">1H Divergence Down</option>
 </select>
+
+</div>
+
+<button onclick="analyze()">Analyze</button>
+
+<div class="card" id="result">Waiting...</div>
+
+<div class="card">
+<h3>📡 Live Price</h3>
+<div id="price">Loading...</div>
+<div id="orderbook"></div>
 </div>
 
 <div class="card">
-<h3>Market Signals</h3>
-
-<select id="div">
-<option value="none">No Divergence</option>
-<option value="bull">Bullish Divergence</option>
-<option value="bear">Bearish Divergence</option>
-</select>
-
-<select id="liquidity">
-<option value="no">No Liquidity Sweep</option>
-<option value="yes">Liquidity Sweep Done</option>
-</select>
-
-<select id="candle">
-<option value="no">No Confirmation</option>
-<option value="bull">Bullish Candle</option>
-<option value="bear">Bearish Candle</option>
-</select>
-
+<h3>📊 Stats</h3>
+<div id="stats"></div>
 </div>
 
 <div class="card">
-<h3>Risk Calculator</h3>
-
-<input type="number" id="entry" placeholder="Entry Price">
-<input type="number" id="sl" placeholder="Stop Loss">
-<input type="number" id="tp" placeholder="Take Profit">
+<h3>💾 History</h3>
+<ul id="history"></ul>
 </div>
 
-<button onclick="analyze()">Analyze Trade</button>
-
-<div class="card result" id="output">Waiting...</div>
+<button onclick="resetAll()">Reset</button>
 
 </div>
+
+<audio id="sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <script>
-function analyze() {
 
-let day = document.getElementById("day").value;
-let h4 = document.getElementById("h4").value;
-let h1 = document.getElementById("h1").value;
-let div = document.getElementById("div").value;
-let liq = document.getElementById("liquidity").value;
-let candle = document.getElementById("candle").value;
+let trades = JSON.parse(localStorage.getItem("trades")) || [];
 
-let entry = parseFloat(document.getElementById("entry").value);
-let sl = parseFloat(document.getElementById("sl").value);
-let tp = parseFloat(document.getElementById("tp").value);
+// ================= CHART =================
+function loadChart(){
+new TradingView.widget({
+container_id:"chart",
+symbol:"BINANCE:"+symbol.value,
+interval:"60",
+theme:"dark",
+width:"100%",
+height:300
+});
+}
 
-let result = "NO TRADE";
-let className = "neutral";
+// ================= LOGIC ENGINE =================
+function analyze(){
+
+let d=day.value;
+let h4v=h4.value;
+let h1v=h1.value;
+
+let result="NO TRADE";
+let score=0;
 
 // BUY LOGIC
-if(day==="up" && h4==="up" && h1==="up" && candle==="bull"){
-    result = "🟢 STRONG BUY";
-    className = "buy";
+if(d==="up" && h4v==="up" && h1v==="up"){
+    result="🟢 STRONG BUY"; score=95;
 }
-else if(day==="up" && h4==="down" && div==="bull" && candle==="bull"){
-    result = "🟢 PULLBACK BUY";
-    className = "buy";
+else if(d==="up" && h4v==="down" && h1v==="divup"){
+    result="🟢 PULLBACK BUY"; score=80;
 }
-else if(day==="down" && div==="bull" && h1==="up" && liq==="yes"){
-    result = "🟢 REVERSAL BUY";
-    className = "buy";
+else if(d==="down" && h4v==="divup" && h1v==="up"){
+    result="🟢 REVERSAL BUY"; score=70;
 }
 
 // SELL LOGIC
-else if(day==="down" && h4==="down" && h1==="down" && candle==="bear"){
-    result = "🔴 STRONG SELL";
-    className = "sell";
+else if(d==="down" && h4v==="down" && h1v==="down"){
+    result="🔴 STRONG SELL"; score=95;
 }
-else if(day==="down" && h4==="up" && div==="bear" && candle==="bear"){
-    result = "🔴 PULLBACK SELL";
-    className = "sell";
+else if(d==="down" && h4v==="up" && h1v==="divdown"){
+    result="🔴 PULLBACK SELL"; score=80;
 }
-else if(day==="up" && div==="bear" && h1==="down" && liq==="yes"){
-    result = "🔴 REVERSAL SELL";
-    className = "sell";
+else if(d==="up" && h4v==="divdown" && h1v==="down"){
+    result="🔴 REVERSAL SELL"; score=70;
 }
 
-// RR CALC
-let rrText = "";
-if(entry && sl && tp){
-    let risk = Math.abs(entry - sl);
-    let reward = Math.abs(tp - entry);
-    let rr = (reward / risk).toFixed(2);
-    rrText = "<br>RR Ratio: " + rr;
+// OUTPUT
+resultDiv.innerHTML = result + "<br>AI Score: "+score+"%";
+
+// ALERT
+if(result!=="NO TRADE"){
+    sound.play();
+    alert(result);
 }
 
-document.getElementById("output").innerHTML =
-    "<span class='" + className + "'>" + result + "</span>" + rrText;
+// SAVE
+trades.push({result,score});
+localStorage.setItem("trades",JSON.stringify(trades));
+
+renderHistory();
 }
+
+// ================= BINANCE API =================
+async function fetchPrice(){
+let sym = symbol.value;
+
+let priceRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${sym}`);
+let priceData = await priceRes.json();
+
+price.innerText = "Price: " + priceData.price;
+
+// Order book
+let obRes = await fetch(`https://api.binance.com/api/v3/depth?symbol=${sym}&limit=5`);
+let obData = await obRes.json();
+
+orderbook.innerHTML =
+"Top Bid: "+obData.bids[0][0]+"<br>Top Ask: "+obData.asks[0][0];
+}
+
+setInterval(fetchPrice,3000);
+
+// ================= HISTORY =================
+function renderHistory(){
+history.innerHTML="";
+
+let wins=0;
+
+trades.forEach(t=>{
+let li=document.createElement("li");
+li.innerText = t.result + " ("+t.score+"%)";
+history.appendChild(li);
+
+if(t.score>80) wins++;
+});
+
+stats.innerText = "Trades: "+trades.length+" | High Score: "+wins;
+}
+
+// ================= RESET =================
+function resetAll(){
+localStorage.clear();
+trades=[];
+renderHistory();
+result.innerText="Reset Done";
+}
+
+// INIT
+loadChart();
+renderHistory();
+
 </script>
 
 </body>
